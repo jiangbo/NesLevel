@@ -16,16 +16,7 @@ pub fn main() !void {
     printHex(ppuMemory.palette);
 
     try img.writePatternTable(ppuMemory);
-
-    try img.writeNameTable("rom/nameTable0", ppuMemory.nameTable0, ppuMemory.patternTable0);
-
-    if (!std.mem.eql(u8, ppuMemory.nameTable0, ppuMemory.nameTable1)) {
-        try img.writeNameTable("rom/nameTable1", ppuMemory.nameTable1, ppuMemory.patternTable0);
-    }
-
-    if (!std.mem.eql(u8, ppuMemory.nameTable0, ppuMemory.nameTable2)) {
-        try img.writeNameTable("rom/nameTable2", ppuMemory.nameTable2, ppuMemory.patternTable0);
-    }
+    try img.writeNameTable(ppuMemory);
 }
 
 fn readFileAll(allocator: std.mem.Allocator, path: []const u8) ![]u8 {

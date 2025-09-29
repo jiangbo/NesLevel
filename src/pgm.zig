@@ -54,40 +54,68 @@ pub fn writePatternTable(ppu: mem.PPU) !void {
     var backing: [width * height]u8 = undefined;
     var buffer = Buffer.init(&backing, width, height);
 
-    fillBuffer(&buffer, ppu, 0);
+    fillPatternBuffer(&buffer, ppu, 0);
     try buffer.write("rom/pattern0");
 
-    fillBuffer(&buffer, ppu, 1);
+    fillPatternBuffer(&buffer, ppu, 1);
     try buffer.write("rom/pattern1");
 }
 
-fn fillBuffer(buffer: *Buffer, ppu: mem.PPU, patternIndex: u8) void {
-    const table = switch (patternIndex) {
+fn fillPatternBuffer(buffer: *Buffer, ppu: mem.PPU, i: u8) void {
+    const patternTable = switch (i) {
         0 => ppu.patternTable0,
         1 => ppu.patternTable1,
         else => @panic("invalid pattern table index"),
     };
 
-    for (0..table.len / 16) |index| {
+    for (0..patternTable.len / 16) |index| {
         const offset = index * 16;
         const tile = mem.Tile{
             .index = index,
             .x = (index % 16) * 8,
             .y = (index / 16) * 8,
-            .plane0 = table[offset..][0..8],
-            .plane1 = table[offset + 8 ..][0..8],
+            .plane0 = patternTable[offset..][0..8],
+            .plane1 = patternTable[offset + 8 ..][0..8],
         };
         buffer.drawTile(tile);
     }
 }
 
-const str = []const u8;
-pub fn writeNameTable(path: str, nameTable: str, patternTable: str) !void {
+pub fn writeNameTable(ppu: mem.PPU) !void {
     const width = 256; // 32 tiles * 8
     const height = 240; // 30 tiles * 8
 
     var backing: [width * height]u8 = undefined;
-    var buf = Buffer.init(&backing, width, height);
+    var buffer = Buffer.init(&backing, width, height);
+
+    fillNameBuffer(&buffer, ppu, 0, 0);
+    try buffer.write("rom/nameTable0");
+
+    if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable1)) {
+        fillNameBuffer(&buffer, ppu, 1, 0);
+        try buffer.write("rom/nameTable1");
+    }
+
+    if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable2)) {
+        fillNameBuffer(&buffer, ppu, 2, 0);
+        try buffer.write("rom/nameTable2");
+    }
+}
+
+fn fillNameBuffer(buffer: *Buffer, ppu: mem.PPU, ni: u8, pi: u8) void {
+    const nameTable = switch (ni) {
+        0 => ppu.nameTable0,
+        1 => ppu.nameTable1,
+        2 => ppu.nameTable2,
+        3 => ppu.nameTable3,
+        else => @panic("invalid name table index"),
+    };
+
+    const patternTable = switch (pi) {
+        0 => ppu.patternTable0,
+        1 => ppu.patternTable1,
+        else => @panic("invalid pattern table index"),
+    };
 
     for (0..mem.PPU.attrIndex) |index| {
         const offset = @as(usize, nameTable[index]) * 16;
@@ -99,8 +127,6 @@ pub fn writeNameTable(path: str, nameTable: str, patternTable: str) !void {
             .plane1 = patternTable[offset + 8 ..][0..8],
         };
 
-        buf.drawTile(tile);
+        buffer.drawTile(tile);
     }
-
-    try buf.write(path);
 }
