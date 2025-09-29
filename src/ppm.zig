@@ -7,6 +7,9 @@ pub const Buffer = struct {
     width: usize,
     height: usize,
 
+    attrTable: []const u8 = &.{},
+    palette: []const u8 = &.{},
+
     pub fn init(data: []u8, width: usize, height: usize) Buffer {
         std.debug.assert(data.len == width * height * 3);
         return Buffer{ .data = data, .width = width, .height = height };
@@ -23,8 +26,8 @@ pub const Buffer = struct {
                 const hi = (b1 >> bit) & 1;
                 const i: u8 = @intCast((hi << 1) | lo);
 
-                const x = tile.x + col;
-                const y = tile.y + row;
+                const x = tile.x * 8 + col;
+                const y = tile.y * 8 + row;
                 const idx = (y * self.width + x) * 3;
 
                 const rgb = palette[i * 3 ..];
@@ -77,8 +80,8 @@ fn fillPatternBuffer(buffer: *Buffer, ppu: mem.PPU, i: u8) void {
         const offset = index * 16;
         const tile = mem.Tile{
             .index = index,
-            .x = (index % 16) * 8,
-            .y = (index / 16) * 8,
+            .x = (index % 16),
+            .y = (index / 16),
             .plane0 = table[offset..][0..8],
             .plane1 = table[offset + 8 ..][0..8],
         };
@@ -126,8 +129,8 @@ fn fillNameBuffer(buffer: *Buffer, ppu: mem.PPU, ni: u8, pi: u8) void {
         const offset = @as(usize, nameTable[index]) * 16;
         const tile = mem.Tile{
             .index = nameTable[index],
-            .x = (index % 32) * 8,
-            .y = (index / 32) * 8,
+            .x = index % 32,
+            .y = index / 32,
             .plane0 = patternTable[offset..][0..8],
             .plane1 = patternTable[offset + 8 ..][0..8],
         };
