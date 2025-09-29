@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub const Tile = struct {
+    index: usize,
     x: usize,
     y: usize,
     plane0: []const u8, // 8 字节

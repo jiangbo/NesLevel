@@ -55,12 +55,13 @@ pub fn writePatternTable(path: []const u8, table: []const u8) !void {
     var buffer = Buffer.init(&backing, width, height);
 
     for (0..table.len / 16) |index| {
-        const base = index * 16;
+        const offset = index * 16;
         const tile = mem.Tile{
+            .index = index,
             .x = (index % 16) * 8,
             .y = (index / 16) * 8,
-            .plane0 = table[base .. base + 8],
-            .plane1 = table[base + 8 .. base + 16],
+            .plane0 = table[offset..][0..8],
+            .plane1 = table[offset + 8 ..][0..8],
         };
         buffer.drawTile(tile);
     }
@@ -76,15 +77,14 @@ pub fn writeNameTable(path: str, nameTable: str, patternTable: str) !void {
     var backing: [width * height]u8 = undefined;
     var buf = Buffer.init(&backing, width, height);
 
-    for (0..960) |i| {
-        const tileIndex: usize = nameTable[i];
-        const base = tileIndex * 16;
-
+    for (0..960) |index| {
+        const offset = @as(usize, nameTable[index]) * 16;
         const tile = mem.Tile{
-            .x = (i % 32) * 8,
-            .y = (i / 32) * 8,
-            .plane0 = patternTable[base .. base + 8],
-            .plane1 = patternTable[base + 8 .. base + 16],
+            .index = nameTable[index],
+            .x = (index % 32) * 8,
+            .y = (index / 32) * 8,
+            .plane0 = patternTable[offset..][0..8],
+            .plane1 = patternTable[offset + 8 ..][0..8],
         };
 
         buf.drawTile(tile);

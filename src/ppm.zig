@@ -27,7 +27,7 @@ pub const Buffer = struct {
                 const y = tile.y + row;
                 const idx = (y * self.width + x) * 3;
 
-                const rgb = PALETTE[i];
+                const rgb = palette[i * 3 ..];
                 self.data[idx + 0] = rgb[0];
                 self.data[idx + 1] = rgb[1];
                 self.data[idx + 2] = rgb[2];
@@ -50,12 +50,7 @@ pub const Buffer = struct {
     }
 };
 
-const PALETTE: [4][3]u8 = .{
-    .{ 0, 0, 0 },
-    .{ 85, 85, 85 },
-    .{ 170, 170, 170 },
-    .{ 255, 255, 255 },
-};
+pub const palette = @embedFile("nes.pal");
 
 pub fn writePatternTable(path: []const u8, table: []const u8) !void {
     const width = 128;
@@ -65,12 +60,13 @@ pub fn writePatternTable(path: []const u8, table: []const u8) !void {
     var buffer = Buffer.init(&backing, width, height);
 
     for (0..table.len / 16) |index| {
-        const base = index * 16;
+        const offset = index * 16;
         const tile = mem.Tile{
+            .index = index,
             .x = (index % 16) * 8,
             .y = (index / 16) * 8,
-            .plane0 = table[base .. base + 8],
-            .plane1 = table[base + 8 .. base + 16],
+            .plane0 = table[offset..][0..8],
+            .plane1 = table[offset + 8 ..][0..8],
         };
         buffer.drawTile(tile);
     }
@@ -86,15 +82,15 @@ pub fn writeNameTable(path: str, nameTable: str, patternTable: str) !void {
     var backing: [width * height * 3]u8 = undefined;
     var buf = Buffer.init(&backing, width, height);
 
-    for (0..960) |i| {
-        const tileIndex: usize = nameTable[i];
-        const base = tileIndex * 16;
+    for (0..960) |index| {
+        const offset = @as(usize, nameTable[index]) * 16;
 
         const tile = mem.Tile{
-            .x = (i % 32) * 8,
-            .y = (i / 32) * 8,
-            .plane0 = patternTable[base .. base + 8],
-            .plane1 = patternTable[base + 8 .. base + 16],
+            .index = nameTable[index],
+            .x = (index % 32) * 8,
+            .y = (index / 32) * 8,
+            .plane0 = patternTable[offset..][0..8],
+            .plane1 = patternTable[offset + 8 ..][0..8],
         };
 
         buf.drawTile(tile);
