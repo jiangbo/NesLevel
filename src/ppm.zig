@@ -1,11 +1,6 @@
 const std = @import("std");
 
-pub const Tile = struct {
-    x: usize,
-    y: usize,
-    plane0: []const u8, // 8 字节
-    plane1: []const u8, // 8 字节
-};
+const mem = @import("memory.zig");
 
 pub const Buffer = struct {
     data: []u8, // 长度 = width * height * 3
@@ -17,7 +12,7 @@ pub const Buffer = struct {
         return Buffer{ .data = data, .width = width, .height = height };
     }
 
-    fn drawTile(self: *Buffer, tile: Tile) void {
+    fn drawTile(self: *Buffer, tile: mem.Tile) void {
         for (0..8) |row| {
             const b0 = tile.plane0[row];
             const b1 = tile.plane1[row];
@@ -44,7 +39,10 @@ pub const Buffer = struct {
         var file = try std.fs.cwd().createFile(path, .{});
         defer file.close();
 
-        try file.writer().print("P6\n{} {}\n255\n", .{ self.width, self.height });
+        try file.writer().print("P6\n{} {}\n255\n", .{
+            self.width,
+            self.height,
+        });
         try file.writeAll(self.data);
     }
 };
@@ -65,7 +63,7 @@ pub fn writePatternTable(path: []const u8, table: []const u8) !void {
 
     for (0..table.len / 16) |index| {
         const base = index * 16;
-        const tile = Tile{
+        const tile = mem.Tile{
             .x = (index % 16) * 8,
             .y = (index / 16) * 8,
             .plane0 = table[base .. base + 8],
@@ -89,7 +87,7 @@ pub fn writeNameTable(path: str, nameTable: str, patternTable: str) !void {
         const tileIndex: usize = nameTable[i];
         const base = tileIndex * 16;
 
-        const tile = Tile{
+        const tile = mem.Tile{
             .x = (i % 32) * 8,
             .y = (i / 32) * 8,
             .plane0 = patternTable[base .. base + 8],
