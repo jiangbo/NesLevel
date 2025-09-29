@@ -32,8 +32,11 @@ pub const Buffer = struct {
         }
     }
 
-    pub fn write(self: Buffer, path: []const u8) !void {
+    pub fn write(self: Buffer, name: []const u8) !void {
+        var buffer: [256]u8 = undefined;
+        const path = try std.fmt.bufPrint(&buffer, "{s}.pgm", .{name});
         var file = try std.fs.cwd().createFile(path, .{});
+
         defer file.close();
 
         try file.writer().print("P5\n{} {}\n255\n", .{

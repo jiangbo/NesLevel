@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const mem = @import("memory.zig");
-const pgm = @import("ppm.zig");
+const img = @import("ppm.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -15,17 +15,17 @@ pub fn main() !void {
 
     printHex(ppuMemory.attributeTable);
 
-    try pgm.writePatternTable("rom/pattern0.pgm", ppuMemory.patternTable0);
-    try pgm.writePatternTable("rom/pattern1.pgm", ppuMemory.patternTable1);
+    try img.writePatternTable("rom/pattern0", ppuMemory.patternTable0);
+    try img.writePatternTable("rom/pattern1", ppuMemory.patternTable1);
 
-    try pgm.writeNameTable("rom/nameTable0.pgm", ppuMemory.nameTable0, ppuMemory.patternTable0);
+    try img.writeNameTable("rom/nameTable0", ppuMemory.nameTable0, ppuMemory.patternTable0);
 
     if (!std.mem.eql(u8, ppuMemory.nameTable0, ppuMemory.nameTable1)) {
-        try pgm.writeNameTable("rom/nameTable1.pgm", ppuMemory.nameTable1, ppuMemory.patternTable0);
+        try img.writeNameTable("rom/nameTable1", ppuMemory.nameTable1, ppuMemory.patternTable0);
     }
 
     if (!std.mem.eql(u8, ppuMemory.nameTable0, ppuMemory.nameTable2)) {
-        try pgm.writeNameTable("rom/nameTable2.pgm", ppuMemory.nameTable2, ppuMemory.patternTable0);
+        try img.writeNameTable("rom/nameTable2", ppuMemory.nameTable2, ppuMemory.patternTable0);
     }
 }
 
