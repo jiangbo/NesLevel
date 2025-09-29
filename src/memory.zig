@@ -22,9 +22,9 @@ pub const PPU = struct {
     nameTableMirror: []u8, // 0x3000 - 0x3EFF
 
     // attribute Tables
-    attributeTable: []u8, // 0x3F00 - 0x3F1F (32B)
+    attrTable: []u8, // 0x3F00 - 0x3F1F (32B)
     // palette mirror
-    attributeTableMirror: []u8, // 0x3F20 - 0x3FFF
+    attrTableMirror: []u8, // 0x3F20 - 0x3FFF
 
     pub fn init(rom: []u8) PPU {
         return .{
@@ -38,8 +38,8 @@ pub const PPU = struct {
 
             .nameTableMirror = rom[0x3000..0x3F00],
 
-            .attributeTable = rom[0x3F00..0x3F20],
-            .attributeTableMirror = rom[0x3F20..0x4000],
+            .attrTable = rom[0x3F00..0x3F20],
+            .attrTableMirror = rom[0x3F20..0x4000],
         };
     }
 };

@@ -47,12 +47,26 @@ pub const Buffer = struct {
     }
 };
 
-pub fn writePatternTable(path: []const u8, table: []const u8) !void {
+pub fn writePatternTable(ppu: mem.PPU) !void {
     const width = 128;
     const height = 128;
 
     var backing: [width * height]u8 = undefined;
     var buffer = Buffer.init(&backing, width, height);
+
+    fillBuffer(&buffer, ppu, 0);
+    try buffer.write("rom/pattern0");
+
+    fillBuffer(&buffer, ppu, 1);
+    try buffer.write("rom/pattern1");
+}
+
+fn fillBuffer(buffer: *Buffer, ppu: mem.PPU, patternIndex: u8) void {
+    const table = switch (patternIndex) {
+        0 => ppu.patternTable0,
+        1 => ppu.patternTable1,
+        else => @panic("invalid pattern table index"),
+    };
 
     for (0..table.len / 16) |index| {
         const offset = index * 16;
@@ -65,8 +79,6 @@ pub fn writePatternTable(path: []const u8, table: []const u8) !void {
         };
         buffer.drawTile(tile);
     }
-
-    try buffer.write(path);
 }
 
 const str = []const u8;
