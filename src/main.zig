@@ -15,7 +15,7 @@ pub fn main() !void {
 
     printHex(ppuMemory.palette);
 
-    // try img.writePatternTable(ppuMemory);
+    try img.writePatternTable(ppuMemory);
     try img.writeNameTable(ppuMemory);
 }
 

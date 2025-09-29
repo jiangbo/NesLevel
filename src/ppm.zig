@@ -22,32 +22,34 @@ pub const Buffer = struct {
         const shift: u3 = @intCast(tile.y & 0b10 | (tile.x & 0b10) >> 1);
         const paletteGroup = attrByte >> shift * 2 & 0b11;
 
+        const baseX, const baseY = .{ tile.x * 8, tile.y * 8 };
+
         for (0..8) |row| {
             const b0 = tile.plane0[row];
             const b1 = tile.plane1[row];
+            const rowOffset = (baseY + row) * self.width * 3;
 
             for (0..8) |col| {
-                const bit: u3 = @intCast(7 - col);
+                const bit: u3 = @intCast(7 ^ col);
                 const lo = (b0 >> bit) & 1;
                 const hi = (b1 >> bit) & 1;
-                const i: u8 = @intCast((hi << 1) | lo);
+                const index: u8 = @intCast((hi << 1) | lo);
 
-                const rgb = self.getPixelColor(paletteGroup, i);
-
-                const x = tile.x * 8 + col;
-                const y = tile.y * 8 + row;
-                const idx = (y * self.width + x) * 3;
-                @memcpy(self.data[idx .. idx + rgb.len], rgb);
+                const rgb = self.getPixelColor(paletteGroup, index);
+                const idx = rowOffset + (baseX + col) * 3;
+                self.data[idx + 0] = rgb[0];
+                self.data[idx + 1] = rgb[1];
+                self.data[idx + 2] = rgb[2];
             }
         }
     }
 
-    fn getPixelColor(self: *Buffer, paletteGroup: u8, i: u8) []const u8 {
+    fn getPixelColor(self: *Buffer, paletteGroup: u8, i: u8) [3]u8 {
         var paletteIndex = paletteGroup * 4 + i;
         if (i == 0) paletteIndex = 0;
 
         const colorIndex = self.palette[paletteIndex];
-        return systemPalette[colorIndex * 3 ..][0..3];
+        return systemPalette[colorIndex * 3 ..][0..3].*;
     }
 
     fn write(self: Buffer, name: []const u8) !void {
@@ -88,12 +90,15 @@ fn fillPatternBuffer(buffer: *Buffer, ppu: mem.PPU, i: u8) void {
         else => @panic("invalid pattern table index"),
     };
 
+    buffer.attrTable = &[_]u8{0} ** 64;
+    buffer.palette = ppu.palette;
+
     for (0..table.len / 16) |index| {
         const offset = index * 16;
         const tile = mem.Tile{
             .index = index,
-            .x = (index % 16),
-            .y = (index / 16),
+            .x = index & 0b1111,
+            .y = index >> 4,
             .plane0 = table[offset..][0..8],
             .plane1 = table[offset + 8 ..][0..8],
         };
