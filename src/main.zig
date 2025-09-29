@@ -17,6 +17,7 @@ pub fn main() !void {
 
     try img.writePatternTable(ppu);
     try img.writeNameTable(ppu);
+    try img.writeBlocks(allocator, ppu);
 }
 
 fn readFileAll(allocator: std.mem.Allocator, path: []const u8) ![]u8 {

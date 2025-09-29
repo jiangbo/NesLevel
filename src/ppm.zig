@@ -159,3 +159,70 @@ fn fillNameBuffer(buffer: *Buffer, ppu: mem.PPU, ni: u8, pi: u8) void {
         buffer.drawTile(tile);
     }
 }
+
+pub fn writeBlocks(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
+    const blockSize = 16; // 每个 block 是 16x16 像素
+    const blocksX = 32 / 2;
+    const blocksY = 30 / 2;
+
+    // 用 HashMap 去重
+    var seen = std.AutoHashMap([4]u8, void).init(allocator);
+    defer seen.deinit();
+
+    var uniqueBlocks = std.ArrayList([4]u8).init(allocator);
+    defer uniqueBlocks.deinit();
+
+    // 遍历屏幕，提取所有 2x2 block
+    for (0..blocksY) |by| {
+        for (0..blocksX) |bx| {
+            const idx0 = ppu.nameTable0[(by * 2) * 32 + (bx * 2)];
+            const idx1 = ppu.nameTable0[(by * 2) * 32 + (bx * 2 + 1)];
+            const idx2 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2)];
+            const idx3 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2 + 1)];
+
+            const key = [4]u8{ idx0, idx1, idx2, idx3 };
+
+            if (!seen.contains(key)) {
+                try seen.put(key, {});
+                try uniqueBlocks.append(key);
+            }
+        }
+    }
+
+    // 输出图像大小：每行 8 个 block
+    const blocksPerRow = 8;
+    const rows = (uniqueBlocks.items.len + blocksPerRow - 1) / blocksPerRow;
+    const width = blocksPerRow * blockSize;
+    const height = rows * blockSize;
+
+    const backing = try allocator.alloc(u8, width * height * 3);
+    defer allocator.free(backing);
+
+    var buffer = Buffer.init(backing, width, height);
+    buffer.attrTable = ppu.nameTable0[mem.PPU.attrIndex..];
+    buffer.palette = ppu.palette;
+
+    // 绘制每个唯一 block
+    for (uniqueBlocks.items, 0..) |block, i| {
+        const bx = (i % blocksPerRow) * 2;
+        const by = (i / blocksPerRow) * 2;
+
+        for (0..2) |dy| {
+            for (0..2) |dx| {
+                const tileIndex = block[dy * 2 + dx];
+                const offset = @as(usize, tileIndex) * 16;
+
+                const tile = mem.Tile{
+                    .index = tileIndex,
+                    .x = bx + dx,
+                    .y = by + dy,
+                    .plane0 = ppu.patternTable0[offset..][0..8],
+                    .plane1 = ppu.patternTable0[offset + 8 ..][0..8],
+                };
+                buffer.drawTile(tile);
+            }
+        }
+    }
+
+    try buffer.write("rom/blocks");
+}
