@@ -13,7 +13,7 @@ pub fn main() !void {
 
     const ppuMemory = mem.PPU.init(rom);
 
-    printHex(ppuMemory.attrTable);
+    printHex(ppuMemory.palette);
 
     try img.writePatternTable(ppuMemory);
 

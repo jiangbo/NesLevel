@@ -89,7 +89,7 @@ pub fn writeNameTable(path: str, nameTable: str, patternTable: str) !void {
     var backing: [width * height]u8 = undefined;
     var buf = Buffer.init(&backing, width, height);
 
-    for (0..960) |index| {
+    for (0..mem.PPU.attrIndex) |index| {
         const offset = @as(usize, nameTable[index]) * 16;
         const tile = mem.Tile{
             .index = nameTable[index],

@@ -9,6 +9,8 @@ pub const Tile = struct {
 };
 
 pub const PPU = struct {
+    pub const attrIndex = 960; // attribute table index
+
     // Pattern Tables
     patternTable0: []u8, // 0x0000 - 0x0FFF (4KB)
     patternTable1: []u8, // 0x1000 - 0x1FFF (4KB)
@@ -21,10 +23,10 @@ pub const PPU = struct {
     // Name Table mirror (0x3000 - 0x3EFF)
     nameTableMirror: []u8, // 0x3000 - 0x3EFF
 
-    // attribute Tables
-    attrTable: []u8, // 0x3F00 - 0x3F1F (32B)
+    // palette
+    palette: []u8, // 0x3F00 - 0x3F1F (32B)
     // palette mirror
-    attrTableMirror: []u8, // 0x3F20 - 0x3FFF
+    paletteMirror: []u8, // 0x3F20 - 0x3FFF
 
     pub fn init(rom: []u8) PPU {
         return .{
@@ -38,8 +40,8 @@ pub const PPU = struct {
 
             .nameTableMirror = rom[0x3000..0x3F00],
 
-            .attrTable = rom[0x3F00..0x3F20],
-            .attrTableMirror = rom[0x3F20..0x4000],
+            .palette = rom[0x3F00..0x3F20],
+            .paletteMirror = rom[0x3F20..0x4000],
         };
     }
 };
