@@ -28,20 +28,20 @@ pub const PPU = struct {
     // palette mirror
     paletteMirror: []u8, // 0x3F20 - 0x3FFF
 
-    pub fn init(rom: []u8) PPU {
+    pub fn init(ppuDump: []u8) PPU {
         return .{
-            .patternTable0 = rom[0x0000..0x1000],
-            .patternTable1 = rom[0x1000..0x2000],
+            .patternTable0 = ppuDump[0x0000..0x1000],
+            .patternTable1 = ppuDump[0x1000..0x2000],
 
-            .nameTable0 = rom[0x2000..0x2400],
-            .nameTable1 = rom[0x2400..0x2800],
-            .nameTable2 = rom[0x2800..0x2C00],
-            .nameTable3 = rom[0x2C00..0x3000],
+            .nameTable0 = ppuDump[0x2000..0x2400],
+            .nameTable1 = ppuDump[0x2400..0x2800],
+            .nameTable2 = ppuDump[0x2800..0x2C00],
+            .nameTable3 = ppuDump[0x2C00..0x3000],
 
-            .nameTableMirror = rom[0x3000..0x3F00],
+            .nameTableMirror = ppuDump[0x3000..0x3F00],
 
-            .palette = rom[0x3F00..0x3F20],
-            .paletteMirror = rom[0x3F20..0x4000],
+            .palette = ppuDump[0x3F00..0x3F20],
+            .paletteMirror = ppuDump[0x3F20..0x4000],
         };
     }
 };

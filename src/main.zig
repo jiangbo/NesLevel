@@ -8,15 +8,15 @@ pub fn main() !void {
     defer _ = gpa.deinit();
 
     const allocator = gpa.allocator();
-    const rom = try readFileAll(allocator, "rom/Feng Shen Bang.dmp");
-    defer allocator.free(rom);
+    const ppuDump = try readFileAll(allocator, "rom/Feng Shen Bang.dmp");
+    defer allocator.free(ppuDump);
 
-    const ppuMemory = mem.PPU.init(rom);
+    const ppu = mem.PPU.init(ppuDump);
 
-    printHex(ppuMemory.palette);
+    printHex(ppu.palette);
 
-    try img.writePatternTable(ppuMemory);
-    try img.writeNameTable(ppuMemory);
+    try img.writePatternTable(ppu);
+    try img.writeNameTable(ppu);
 }
 
 fn readFileAll(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
