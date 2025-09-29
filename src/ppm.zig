@@ -10,12 +10,18 @@ pub const Buffer = struct {
     attrTable: []const u8 = &.{},
     palette: []const u8 = &.{},
 
-    pub fn init(data: []u8, width: usize, height: usize) Buffer {
+    fn init(data: []u8, width: usize, height: usize) Buffer {
         std.debug.assert(data.len == width * height * 3);
         return Buffer{ .data = data, .width = width, .height = height };
     }
 
     fn drawTile(self: *Buffer, tile: mem.Tile) void {
+        const attrIndex = (tile.y & 0b11100) << 1 | tile.x >> 2;
+        const attrByte = self.attrTable[attrIndex];
+
+        const shift: u3 = @intCast(tile.y & 0b10 | (tile.x & 0b10) >> 1);
+        const paletteGroup = attrByte >> shift * 2 & 0b11;
+
         for (0..8) |row| {
             const b0 = tile.plane0[row];
             const b1 = tile.plane1[row];
@@ -26,19 +32,25 @@ pub const Buffer = struct {
                 const hi = (b1 >> bit) & 1;
                 const i: u8 = @intCast((hi << 1) | lo);
 
+                const rgb = self.getPixelColor(paletteGroup, i);
+
                 const x = tile.x * 8 + col;
                 const y = tile.y * 8 + row;
                 const idx = (y * self.width + x) * 3;
-
-                const rgb = palette[i * 3 ..];
-                self.data[idx + 0] = rgb[0];
-                self.data[idx + 1] = rgb[1];
-                self.data[idx + 2] = rgb[2];
+                @memcpy(self.data[idx .. idx + rgb.len], rgb);
             }
         }
     }
 
-    pub fn write(self: Buffer, name: []const u8) !void {
+    fn getPixelColor(self: *Buffer, paletteGroup: u8, i: u8) []const u8 {
+        var paletteIndex = paletteGroup * 4 + i;
+        if (i == 0) paletteIndex = 0;
+
+        const colorIndex = self.palette[paletteIndex];
+        return systemPalette[colorIndex * 3 ..][0..3];
+    }
+
+    fn write(self: Buffer, name: []const u8) !void {
         var buffer: [256]u8 = undefined;
         const path = try std.fmt.bufPrint(&buffer, "{s}.ppm", .{name});
 
@@ -53,7 +65,7 @@ pub const Buffer = struct {
     }
 };
 
-pub const palette = @embedFile("nes.pal");
+const systemPalette = @embedFile("nes2.pal");
 
 pub fn writePatternTable(ppu: mem.PPU) !void {
     const width = 128;
@@ -95,16 +107,20 @@ pub fn writeNameTable(ppu: mem.PPU) !void {
 
     var backing: [width * height * 3]u8 = undefined;
     var buffer = Buffer.init(&backing, width, height);
+    buffer.attrTable = ppu.nameTable0[mem.PPU.attrIndex..];
+    buffer.palette = ppu.palette;
 
     fillNameBuffer(&buffer, ppu, 0, 0);
     try buffer.write("rom/nameTable0");
 
     if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable1)) {
+        buffer.attrTable = ppu.nameTable1[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 1, 0);
         try buffer.write("rom/nameTable1");
     }
 
     if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable2)) {
+        buffer.attrTable = ppu.nameTable2[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 2, 0);
         try buffer.write("rom/nameTable2");
     }
@@ -129,8 +145,8 @@ fn fillNameBuffer(buffer: *Buffer, ppu: mem.PPU, ni: u8, pi: u8) void {
         const offset = @as(usize, nameTable[index]) * 16;
         const tile = mem.Tile{
             .index = nameTable[index],
-            .x = index % 32,
-            .y = index / 32,
+            .x = index & 0b11111,
+            .y = index >> 5,
             .plane0 = patternTable[offset..][0..8],
             .plane1 = patternTable[offset + 8 ..][0..8],
         };

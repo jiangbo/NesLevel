@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const mem = @import("memory.zig");
-const img = @import("pgm.zig");
+const img = @import("ppm.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -15,7 +15,7 @@ pub fn main() !void {
 
     printHex(ppuMemory.palette);
 
-    try img.writePatternTable(ppuMemory);
+    // try img.writePatternTable(ppuMemory);
     try img.writeNameTable(ppuMemory);
 }
 
