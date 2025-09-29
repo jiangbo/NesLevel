@@ -2,16 +2,17 @@ const std = @import("std");
 
 const mem = @import("memory.zig");
 const cache = @import("cache.zig");
+const image = @import("image.zig");
 
 pub const Buffer = struct {
     data: []u8, // width * height * 3
-    width: usize,
-    height: usize,
+    width: u32,
+    height: u32,
 
     attrTable: []const u8 = &.{},
     palette: []const u8 = &.{},
 
-    fn init(data: []u8, width: usize, height: usize) Buffer {
+    fn init(data: []u8, width: u32, height: u32) Buffer {
         std.debug.assert(data.len == width * height * 3);
         return Buffer{ .data = data, .width = width, .height = height };
     }
@@ -51,18 +52,12 @@ pub const Buffer = struct {
         }
     }
 
-    fn write(self: Buffer, name: []const u8) !void {
-        var buffer: [256]u8 = undefined;
-        const path = try std.fmt.bufPrint(&buffer, "{s}.ppm", .{name});
-
-        var file = try std.fs.cwd().createFile(path, .{});
-        defer file.close();
-
-        try file.writer().print("P6\n{} {}\n255\n", .{
+    fn toImageBuffer(self: Buffer) image.Buffer {
+        return .init(
             self.width,
             self.height,
-        });
-        try file.writeAll(self.data);
+            self.data,
+        );
     }
 };
 
@@ -76,10 +71,10 @@ pub fn writePatternTable(ppu: mem.PPU) !void {
     var buffer = Buffer.init(&backing, width, height);
 
     fillPatternBuffer(&buffer, ppu, 0);
-    try buffer.write("rom/pattern0");
+    try buffer.toImageBuffer().write("rom/pattern0.ppm");
 
     fillPatternBuffer(&buffer, ppu, 1);
-    try buffer.write("rom/pattern1");
+    try buffer.toImageBuffer().write("rom/pattern1.ppm");
 }
 
 fn fillPatternBuffer(buffer: *Buffer, ppu: mem.PPU, i: u8) void {
@@ -115,18 +110,18 @@ pub fn writeNameTable(ppu: mem.PPU) !void {
     buffer.palette = ppu.palette;
 
     fillNameBuffer(&buffer, ppu, 0, 0);
-    try buffer.write("rom/nameTable0");
+    try buffer.toImageBuffer().write("rom/nameTable0.ppm");
 
     if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable1)) {
         buffer.attrTable = ppu.nameTable1[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 1, 0);
-        try buffer.write("rom/nameTable1");
+        try buffer.toImageBuffer().write("rom/nameTable1.ppm");
     }
 
     if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable2)) {
         buffer.attrTable = ppu.nameTable2[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 2, 0);
-        try buffer.write("rom/nameTable2");
+        try buffer.toImageBuffer().write("rom/nameTable2.ppm");
     }
 }
 
@@ -157,68 +152,4 @@ fn fillNameBuffer(buffer: *Buffer, ppu: mem.PPU, ni: u8, pi: u8) void {
 
         buffer.drawTile(tile, true);
     }
-}
-
-pub fn writeBlocks(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
-    const blockSize = 16;
-    const blocksX = 32 / 2;
-    const blocksY = 30 / 2;
-
-    // 只用一个 HashMap 存唯一 block
-    var seen = std.AutoHashMap([4]u8, void).init(allocator);
-    defer seen.deinit();
-
-    for (0..blocksY) |by| {
-        for (0..blocksX) |bx| {
-            const idx0 = ppu.nameTable0[(by * 2) * 32 + (bx * 2)];
-            const idx1 = ppu.nameTable0[(by * 2) * 32 + (bx * 2 + 1)];
-            const idx2 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2)];
-            const idx3 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2 + 1)];
-
-            const key = [4]u8{ idx0, idx1, idx2, idx3 };
-            _ = try seen.put(key, {}); // 已存在则覆盖，无影响
-        }
-    }
-
-    // 计算输出大小
-    const blocksPerRow = 8;
-    const rows = (seen.count() + blocksPerRow - 1) / blocksPerRow;
-    const width = blocksPerRow * blockSize;
-    const height = rows * blockSize;
-
-    const backing = try allocator.alloc(u8, width * height * 3);
-    defer allocator.free(backing);
-    @memset(backing, 0);
-
-    // 遍历 HashMap 的 key，直接绘制
-    var it = seen.keyIterator();
-    var i: usize = 0;
-    while (it.next()) |block| {
-        const baseX = (i % blocksPerRow) * blockSize;
-        const baseY = (i / blocksPerRow) * blockSize;
-
-        for (0..2) |dy| {
-            for (0..2) |dx| {
-                const tileIndex = block.*[dy * 2 + dx];
-
-                const tilePixels = cache.colorTiles[tileIndex];
-
-                for (0..8) |ty| {
-                    for (0..8) |tx| {
-                        const rgb = tilePixels[ty * 8 + tx];
-                        const px = baseX + dx * 8 + tx;
-                        const py = baseY + dy * 8 + ty;
-                        const idx = (py * width + px) * 3;
-                        backing[idx + 0] = rgb[0];
-                        backing[idx + 1] = rgb[1];
-                        backing[idx + 2] = rgb[2];
-                    }
-                }
-            }
-        }
-        i += 1;
-    }
-
-    var buffer = Buffer.init(backing, width, height);
-    try buffer.write("rom/blocks");
 }
