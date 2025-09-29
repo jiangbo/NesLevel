@@ -2,7 +2,8 @@ const std = @import("std");
 
 const cache = @import("cache.zig");
 const mem = @import("memory.zig");
-const img = @import("ppm.zig");
+const block = @import("block.zig");
+const ppm = @import("ppm.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -18,10 +19,10 @@ pub fn main() !void {
 
     printHex(ppu.palette);
 
-    try img.writePatternTable(ppu);
-    try img.writeNameTable(ppu);
+    try ppm.writePatternTable(ppu);
+    try ppm.writeNameTable(ppu);
 
-    // try img.writeBlocks(allocator, ppu);
+    try block.write2x2(allocator, ppu);
 }
 
 fn readFileAll(allocator: std.mem.Allocator, path: []const u8) ![]u8 {

@@ -13,7 +13,6 @@ pub const Buffer = struct {
     palette: []const u8 = &.{},
 
     fn init(data: []u8, width: u32, height: u32) Buffer {
-        std.debug.assert(data.len == width * height * 3);
         return Buffer{ .data = data, .width = width, .height = height };
     }
 
@@ -53,11 +52,7 @@ pub const Buffer = struct {
     }
 
     fn toImageBuffer(self: Buffer) image.Buffer {
-        return .init(
-            self.width,
-            self.height,
-            self.data,
-        );
+        return .init(self.width, self.height, self.data);
     }
 };
 
