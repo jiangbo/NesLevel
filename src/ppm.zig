@@ -42,11 +42,11 @@ pub const Buffer = struct {
                 if (index == 0) paletteIndex = 0;
 
                 const colorIndex = self.palette[paletteIndex];
-                const idx = rowOffset + (baseX + col) * 3;
                 const rgb = systemPalette[colorIndex * 3 ..][0..3];
+                const idx = rowOffset + (baseX + col) * 3;
                 @memcpy(self.data[idx..][0..3], rgb);
 
-                if (isCache) @memcpy(&colorTile[row + col * 8], rgb);
+                if (isCache) @memcpy(&colorTile[row * 8 + col], rgb);
             }
         }
     }
@@ -159,69 +159,66 @@ fn fillNameBuffer(buffer: *Buffer, ppu: mem.PPU, ni: u8, pi: u8) void {
     }
 }
 
-// pub fn writeBlocks(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
-//     const blockSize = 16; // 每个 block 是 16x16 像素
-//     const blocksX = 32 / 2;
-//     const blocksY = 30 / 2;
+pub fn writeBlocks(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
+    const blockSize = 16;
+    const blocksX = 32 / 2;
+    const blocksY = 30 / 2;
 
-//     // 用 HashMap 去重
-//     var seen = std.AutoHashMap([4]u8, void).init(allocator);
-//     defer seen.deinit();
+    // 只用一个 HashMap 存唯一 block
+    var seen = std.AutoHashMap([4]u8, void).init(allocator);
+    defer seen.deinit();
 
-//     var uniqueBlocks = std.ArrayList([4]u8).init(allocator);
-//     defer uniqueBlocks.deinit();
+    for (0..blocksY) |by| {
+        for (0..blocksX) |bx| {
+            const idx0 = ppu.nameTable0[(by * 2) * 32 + (bx * 2)];
+            const idx1 = ppu.nameTable0[(by * 2) * 32 + (bx * 2 + 1)];
+            const idx2 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2)];
+            const idx3 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2 + 1)];
 
-//     // 遍历屏幕，提取所有 2x2 block
-//     for (0..blocksY) |by| {
-//         for (0..blocksX) |bx| {
-//             const idx0 = ppu.nameTable0[(by * 2) * 32 + (bx * 2)];
-//             const idx1 = ppu.nameTable0[(by * 2) * 32 + (bx * 2 + 1)];
-//             const idx2 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2)];
-//             const idx3 = ppu.nameTable0[(by * 2 + 1) * 32 + (bx * 2 + 1)];
+            const key = [4]u8{ idx0, idx1, idx2, idx3 };
+            _ = try seen.put(key, {}); // 已存在则覆盖，无影响
+        }
+    }
 
-//             const key = [4]u8{ idx0, idx1, idx2, idx3 };
+    // 计算输出大小
+    const blocksPerRow = 8;
+    const rows = (seen.count() + blocksPerRow - 1) / blocksPerRow;
+    const width = blocksPerRow * blockSize;
+    const height = rows * blockSize;
 
-//             if (!seen.contains(key)) {
-//                 try seen.put(key, {});
-//                 try uniqueBlocks.append(key);
-//             }
-//         }
-//     }
+    const backing = try allocator.alloc(u8, width * height * 3);
+    defer allocator.free(backing);
+    @memset(backing, 0);
 
-//     // 输出图像大小：每行 8 个 block
-//     const blocksPerRow = 8;
-//     const rows = (uniqueBlocks.items.len + blocksPerRow - 1) / blocksPerRow;
-//     const width = blocksPerRow * blockSize;
-//     const height = rows * blockSize;
+    // 遍历 HashMap 的 key，直接绘制
+    var it = seen.keyIterator();
+    var i: usize = 0;
+    while (it.next()) |block| {
+        const baseX = (i % blocksPerRow) * blockSize;
+        const baseY = (i / blocksPerRow) * blockSize;
 
-//     const backing = try allocator.alloc(u8, width * height * 3);
-//     defer allocator.free(backing);
+        for (0..2) |dy| {
+            for (0..2) |dx| {
+                const tileIndex = block.*[dy * 2 + dx];
 
-//     var buffer = Buffer.init(backing, width, height);
-//     buffer.attrTable = ppu.nameTable0[mem.PPU.attrIndex..];
-//     buffer.palette = ppu.palette;
+                const tilePixels = cache.colorTiles[tileIndex];
 
-//     // 绘制每个唯一 block
-//     for (uniqueBlocks.items, 0..) |block, i| {
-//         const bx = (i % blocksPerRow) * 2;
-//         const by = (i / blocksPerRow) * 2;
+                for (0..8) |ty| {
+                    for (0..8) |tx| {
+                        const rgb = tilePixels[ty * 8 + tx];
+                        const px = baseX + dx * 8 + tx;
+                        const py = baseY + dy * 8 + ty;
+                        const idx = (py * width + px) * 3;
+                        backing[idx + 0] = rgb[0];
+                        backing[idx + 1] = rgb[1];
+                        backing[idx + 2] = rgb[2];
+                    }
+                }
+            }
+        }
+        i += 1;
+    }
 
-//         for (0..2) |dy| {
-//             for (0..2) |dx| {
-//                 const tileIndex = block[dy * 2 + dx];
-//                 const offset = @as(usize, tileIndex) * 16;
-
-//                 const tile = mem.Tile{
-//                     .index = tileIndex,
-//                     .x = bx + dx,
-//                     .y = by + dy,
-//                     .plane0 = ppu.patternTable0[offset..][0..8],
-//                     .plane1 = ppu.patternTable0[offset + 8 ..][0..8],
-//                 };
-//                 buffer.drawTile(tile);
-//             }
-//         }
-//     }
-
-//     try buffer.write("rom/blocks");
-// }
+    var buffer = Buffer.init(backing, width, height);
+    try buffer.write("rom/blocks");
+}
