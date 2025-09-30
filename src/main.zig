@@ -1,8 +1,9 @@
 const std = @import("std");
 
-const cache = @import("cache.zig");
+const ctx = @import("context.zig");
 const mem = @import("memory.zig");
 const block = @import("block.zig");
+const pgm = @import("pgm.zig");
 const ppm = @import("ppm.zig");
 
 pub fn main() !void {
@@ -13,11 +14,13 @@ pub fn main() !void {
     const ppuDump = try readFileAll(allocator, "rom/Feng Shen Bang.dmp");
     defer allocator.free(ppuDump);
 
-    cache.init(allocator);
+    ctx.init(allocator);
 
     const ppu = mem.PPU.init(ppuDump);
-
     printHex(ppu.palette);
+
+    try pgm.writePatternTable(ppu);
+    try pgm.writeNameTable(ppu);
 
     try ppm.writePatternTable(ppu);
     try ppm.writeNameTable(ppu);

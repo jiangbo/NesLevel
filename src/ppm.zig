@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const mem = @import("memory.zig");
-const cache = @import("cache.zig");
-const image = @import("image.zig");
+const ctx = @import("context.zig");
+const img = @import("image.zig");
 
 pub const Buffer = struct {
     data: []u8, // width * height * 3
@@ -25,7 +25,7 @@ pub const Buffer = struct {
 
         const baseX, const baseY = .{ tile.x * 8, tile.y * 8 };
 
-        var colorTile = &cache.colorTiles[tile.index];
+        var colorTile = &ctx.colorTiles[tile.index];
 
         for (0..8) |row| {
             const b0 = tile.plane0[row];
@@ -51,7 +51,7 @@ pub const Buffer = struct {
         }
     }
 
-    fn toImageBuffer(self: Buffer) image.Buffer {
+    fn toImageBuffer(self: Buffer) img.Buffer {
         return .init(self.width, self.height, self.data);
     }
 };
@@ -107,13 +107,13 @@ pub fn writeNameTable(ppu: mem.PPU) !void {
     fillNameBuffer(&buffer, ppu, 0, 0);
     try buffer.toImageBuffer().write("rom/nameTable0.ppm");
 
-    if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable1)) {
+    if (ctx.nameTable1NotSame) {
         buffer.attrTable = ppu.nameTable1[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 1, 0);
         try buffer.toImageBuffer().write("rom/nameTable1.ppm");
     }
 
-    if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable2)) {
+    if (!ctx.nameTable2NotSame) {
         buffer.attrTable = ppu.nameTable2[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 2, 0);
         try buffer.toImageBuffer().write("rom/nameTable2.ppm");

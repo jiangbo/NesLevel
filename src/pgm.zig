@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const mem = @import("memory.zig");
+const img = @import("image.zig");
+const ctx = @import("context.zig");
 
 pub const Buffer = struct {
     data: []u8,
@@ -32,9 +34,7 @@ pub const Buffer = struct {
         }
     }
 
-    pub fn write(self: Buffer, name: []const u8) !void {
-        var buffer: [256]u8 = undefined;
-        const path = try std.fmt.bufPrint(&buffer, "{s}.pgm", .{name});
+    pub fn write(self: Buffer, path: []const u8) !void {
         var file = try std.fs.cwd().createFile(path, .{});
 
         defer file.close();
@@ -55,10 +55,10 @@ pub fn writePatternTable(ppu: mem.PPU) !void {
     var buffer = Buffer.init(&backing, width, height);
 
     fillPatternBuffer(&buffer, ppu, 0);
-    try buffer.write("rom/pattern0");
+    try buffer.write("out/01-pattern0.pgm");
 
     fillPatternBuffer(&buffer, ppu, 1);
-    try buffer.write("rom/pattern1");
+    try buffer.write("out/02-pattern1.pgm");
 }
 
 fn fillPatternBuffer(buffer: *Buffer, ppu: mem.PPU, i: u8) void {
@@ -89,16 +89,18 @@ pub fn writeNameTable(ppu: mem.PPU) !void {
     var buffer = Buffer.init(&backing, width, height);
 
     fillNameBuffer(&buffer, ppu, 0, 0);
-    try buffer.write("rom/nameTable0");
+    try buffer.write("out/03-nameTable0.pgm");
 
     if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable1)) {
+        ctx.nameTable1NotSame = true;
         fillNameBuffer(&buffer, ppu, 1, 0);
-        try buffer.write("rom/nameTable1");
+        try buffer.write("out/04-nameTable1.pgm");
     }
 
     if (!std.mem.eql(u8, ppu.nameTable0, ppu.nameTable2)) {
+        ctx.nameTable2NotSame = true;
         fillNameBuffer(&buffer, ppu, 2, 0);
-        try buffer.write("rom/nameTable2");
+        try buffer.write("out/05-nameTable2.pgm");
     }
 }
 

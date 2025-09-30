@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const mem = @import("memory.zig");
-const cache = @import("cache.zig");
+const ctx = @import("context.zig");
 const image = @import("image.zig");
 
 pub fn write2x2(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
@@ -46,7 +46,7 @@ pub fn write2x2(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
             for (0..2) |dx| {
                 const tileIndex = block.*[dy * 2 + dx];
 
-                const tilePixels = cache.colorTiles[tileIndex];
+                const tilePixels = ctx.colorTiles[tileIndex];
 
                 for (0..8) |ty| {
                     for (0..8) |tx| {
