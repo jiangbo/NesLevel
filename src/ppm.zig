@@ -66,10 +66,10 @@ pub fn writePatternTable(ppu: mem.PPU) !void {
     var buffer = Buffer.init(&backing, width, height);
 
     fillPatternBuffer(&buffer, ppu, 0);
-    try buffer.toImageBuffer().write("rom/pattern0.ppm");
+    try buffer.toImageBuffer().write("out/11-pattern0.ppm");
 
     fillPatternBuffer(&buffer, ppu, 1);
-    try buffer.toImageBuffer().write("rom/pattern1.ppm");
+    try buffer.toImageBuffer().write("out/12-pattern1.ppm");
 }
 
 fn fillPatternBuffer(buffer: *Buffer, ppu: mem.PPU, i: u8) void {
@@ -105,18 +105,18 @@ pub fn writeNameTable(ppu: mem.PPU) !void {
     buffer.palette = ppu.palette;
 
     fillNameBuffer(&buffer, ppu, 0, 0);
-    try buffer.toImageBuffer().write("rom/nameTable0.ppm");
+    try buffer.toImageBuffer().write("out/13-nameTable0.ppm");
 
     if (ctx.nameTable1NotSame) {
         buffer.attrTable = ppu.nameTable1[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 1, 0);
-        try buffer.toImageBuffer().write("rom/nameTable1.ppm");
+        try buffer.toImageBuffer().write("out/14-nameTable1.ppm");
     }
 
-    if (!ctx.nameTable2NotSame) {
+    if (ctx.nameTable2NotSame) {
         buffer.attrTable = ppu.nameTable2[mem.PPU.attrIndex..];
         fillNameBuffer(&buffer, ppu, 2, 0);
-        try buffer.toImageBuffer().write("rom/nameTable2.ppm");
+        try buffer.toImageBuffer().write("out/15-nameTable2.ppm");
     }
 }
 

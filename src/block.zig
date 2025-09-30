@@ -65,7 +65,7 @@ pub fn write2x2(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
     }
 
     const buffer = image.Buffer.init(width, height, backing);
-    try buffer.write("rom/blocks.ppm");
+    try buffer.write("out/21-blocks.ppm");
 }
 
 // pub fn write4x4(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
