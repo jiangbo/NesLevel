@@ -14,6 +14,9 @@ pub fn main() !void {
     const ppuDump = try readFileAll(allocator, "rom/Feng Shen Bang.dmp");
     defer allocator.free(ppuDump);
 
+    const rom = try readFileAll(allocator, "rom/Feng Shen Bang.nes");
+    defer allocator.free(rom);
+
     ctx.init(allocator);
 
     const ppu = mem.PPU.init(ppuDump);
@@ -27,7 +30,10 @@ pub fn main() !void {
 
     try ctx.writeAllTiles();
 
-    try block.write2x2(allocator, ppu);
+    try block.write4x1(allocator, rom[0x38114..][0..100]);
+
+    // try block.write2x2(allocator, ppu);
+    // try block.write4x4(allocator, ppu);
 }
 
 fn readFileAll(allocator: std.mem.Allocator, path: []const u8) ![]u8 {

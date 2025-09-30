@@ -1,11 +1,11 @@
 const std = @import("std");
 
 pub const Buffer = struct {
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
     data: []const u8,
 
-    pub fn init(width: u32, height: u32, data: []const u8) Buffer {
+    pub fn init(width: usize, height: usize, data: []const u8) Buffer {
         std.debug.assert(data.len == width * height * 3);
         return Buffer{ .width = width, .height = height, .data = data };
     }

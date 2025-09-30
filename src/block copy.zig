@@ -1,41 +1,9 @@
 const std = @import("std");
 
+const mem = @import("memory.zig");
 const ctx = @import("context.zig");
 const cfg = @import("config.zig");
 const img = @import("image.zig");
-const mem = @import("memory.zig");
-
-pub fn write4x1(allocator: std.mem.Allocator, blocks: []const u8) !void {
-    const blockSize = 2; // 每个 block 输出 2x2 tile
-    const blocksPerRow = 8; // 图片每行放 8 个 block
-    const blockPixelSize = cfg.tileSize * blockSize;
-
-    const blockCount = blocks.len / 4;
-    const rows = (blockCount + blocksPerRow - 1) / blocksPerRow;
-    const width = blocksPerRow * blockPixelSize;
-    const height = rows * blockPixelSize;
-
-    const backing = try allocator.alloc(u8, width * height * 3);
-    defer allocator.free(backing);
-    @memset(backing, 0);
-
-    for (0..blockCount) |i| {
-        const baseTileX = (i % blocksPerRow) * blockSize;
-        const baseTileY = (i / blocksPerRow) * blockSize;
-
-        // 每个 block 内 4 个 tile
-        for (0..4) |j| {
-            const dx = j % 2;
-            const dy = j / 2;
-            const tileIndex = blocks[i * 4 + j];
-            const absoluteTileIndex = (baseTileY + dy) * cfg.tilePerRow + (baseTileX + dx);
-            ctx.writeTile(backing, absoluteTileIndex, tileIndex);
-        }
-    }
-
-    const buf = img.Buffer.init(width, height, backing);
-    try buf.write("out/23-blocks-4x1.ppm");
-}
 
 fn collectBlocks2x2(allocator: std.mem.Allocator, nameTable: []u8) !std.AutoHashMap([4]u8, void) {
     var seen = std.AutoHashMap([4]u8, void).init(allocator);
