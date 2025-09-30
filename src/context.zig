@@ -3,14 +3,9 @@ const std = @import("std");
 const cfg = @import("config.zig");
 const img = @import("image.zig");
 
-var allocator: std.mem.Allocator = undefined;
-
-const Color = [3]u8;
-const ColorTile1 = [8 * 8]Color;
-pub var colorTiles1: [256]ColorTile1 = undefined;
-
 const ColorTile = [cfg.bytePerTileCell]u8;
 
+var allocator: std.mem.Allocator = undefined;
 pub var colorTiles: [cfg.tilePerBank]ColorTile = undefined;
 
 pub var nameTable1NotSame: bool = false;
@@ -18,7 +13,7 @@ pub var nameTable2NotSame: bool = false;
 
 pub fn init(alloc: std.mem.Allocator) void {
     allocator = alloc;
-    @memset(std.mem.asBytes(colorTiles1[0..]), 0);
+    @memset(std.mem.asBytes(colorTiles[0..]), 0);
 }
 
 pub fn setTileRow(index: usize, row: usize, src: []const u8) void {
@@ -53,7 +48,7 @@ pub fn writeTileRow(dst: []u8, tileIndex: usize, row: usize) void {
 }
 
 pub fn readTileRow(tileIndex: usize, row: usize) []const u8 {
-    const colorTile = colorTiles[tileIndex];
+    const colorTile = &colorTiles[tileIndex];
     const start = row * cfg.bytePerTileRow;
     return colorTile[start..][0..cfg.bytePerTileRow];
 }
@@ -63,11 +58,11 @@ pub fn writeAllTiles() !void {
     defer allocator.free(backing);
     @memset(backing, 0);
 
-    for (0..colorTiles.len) |tileIndex| {
-        writeTile(backing, tileIndex, tileIndex);
+    for (0..colorTiles.len) |index| {
+        writeTile(backing, index, index);
     }
 
     const size = cfg.pixelPerRow;
     const buffer = img.Buffer.init(size, size, backing);
-    try buffer.write("out/31-tiles.ppm");
+    try buffer.write("out/18-tiles.ppm");
 }

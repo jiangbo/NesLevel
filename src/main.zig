@@ -27,7 +27,7 @@ pub fn main() !void {
 
     try ctx.writeAllTiles();
 
-    // try block.write2x2(allocator, ppu);
+    try block.write2x2(allocator, ppu);
 }
 
 fn readFileAll(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
