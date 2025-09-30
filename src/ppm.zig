@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const mem = @import("memory.zig");
+const cfg = @import("config.zig");
 const ctx = @import("context.zig");
 const img = @import("image.zig");
 
@@ -24,8 +25,7 @@ pub const Buffer = struct {
         const paletteGroup = attrByte >> shift * 2 & 0b11;
 
         const baseX, const baseY = .{ tile.x * 8, tile.y * 8 };
-
-        var colorTile = &ctx.colorTiles[tile.index];
+        const byteColOffset = baseX * cfg.pixelSize;
 
         for (0..8) |row| {
             const b0 = tile.plane0[row];
@@ -45,8 +45,12 @@ pub const Buffer = struct {
                 const rgb = systemPalette[colorIndex * 3 ..][0..3];
                 const idx = rowOffset + (baseX + col) * 3;
                 @memcpy(self.data[idx..][0..3], rgb);
+            }
 
-                if (isCache) @memcpy(&colorTile[row * 8 + col], rgb);
+            if (isCache) {
+                const start = rowOffset + byteColOffset;
+                const src = self.data[start..][0..cfg.bytePerTileRow];
+                ctx.setTileRow(tile.index, row, src);
             }
         }
     }

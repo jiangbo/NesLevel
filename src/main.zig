@@ -25,6 +25,8 @@ pub fn main() !void {
     try ppm.writePatternTable(ppu);
     try ppm.writeNameTable(ppu);
 
+    try ctx.writeAllTiles();
+
     try block.write2x2(allocator, ppu);
 }
 
@@ -35,7 +37,7 @@ fn readFileAll(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
     return file.readToEndAlloc(allocator, std.math.maxInt(usize));
 }
 
-pub fn printHex(hex: []const u8) void {
+fn printHex(hex: []const u8) void {
     for (hex, 0..) |value, i| {
         if (i % 16 == 0) {
             std.debug.print("\n{X:04}: ", .{i});
