@@ -9,7 +9,7 @@ const Color = [3]u8;
 const ColorTile1 = [8 * 8]Color;
 pub var colorTiles1: [256]ColorTile1 = undefined;
 
-const ColorTile = [cfg.bytePerTile]u8;
+const ColorTile = [cfg.bytePerTileCell]u8;
 
 pub var colorTiles: [cfg.tilePerBank]ColorTile = undefined;
 
@@ -21,37 +21,32 @@ pub fn init(alloc: std.mem.Allocator) void {
     @memset(std.mem.asBytes(colorTiles1[0..]), 0);
 }
 
-pub fn setTileRow(tileIndex: usize, row: usize, src: []const u8) void {
+pub fn setTileRow(index: usize, row: usize, src: []const u8) void {
     std.debug.assert(src.len == cfg.bytePerTileRow);
 
-    var colorTile = &colorTiles[tileIndex];
+    var colorTile = &colorTiles[index];
     const start = row * cfg.bytePerTileRow;
-    @memcpy(colorTile[start .. start + src.len], src);
+    @memcpy(colorTile[start..][0..src.len], src);
 }
 
-pub const WriteTileDesc = struct {
-    buffer: []u8,
-    tileX: usize,
-    tileY: usize,
-};
-
-pub fn writeTile(dst: WriteTileDesc, tileIndex: usize) void {
-    std.debug.assert(dst.buffer.len >= cfg.bytePerTile);
+pub fn writeTile(buffer: []u8, dst: usize, src: usize) void {
+    std.debug.assert(buffer.len >= cfg.bytePerTileCell);
 
     // tile 坐标转字节坐标
-    const x = dst.tileX * cfg.tileSize * cfg.pixelSize;
-    const start = x + dst.tileY * cfg.tileSize * cfg.pixelPerRow * cfg.pixelSize;
+    const x = (dst % cfg.tilePerRow) * cfg.bytePerTileRow;
+    const tileY = dst / cfg.tilePerRow;
+    const start = x + tileY * cfg.tileSize * cfg.bytePerRow;
 
     for (0..cfg.tileSize) |row| {
-        const buffer = dst.buffer[start + row * cfg.bytePerRow ..];
-        writeTileRow(buffer, tileIndex, row);
+        const buf = buffer[start + row * cfg.bytePerRow ..];
+        writeTileRow(buf, src, row);
     }
 }
 
 pub fn writeTileRow(dst: []u8, tileIndex: usize, row: usize) void {
     std.debug.assert(dst.len >= cfg.bytePerTileRow);
 
-    var colorTile = colorTiles[tileIndex];
+    var colorTile = &colorTiles[tileIndex];
     const start = row * cfg.bytePerTileRow;
     const src = colorTile[start..][0..cfg.bytePerTileRow];
     @memcpy(dst[0..cfg.bytePerTileRow], src);
@@ -69,10 +64,7 @@ pub fn writeAllTiles() !void {
     @memset(backing, 0);
 
     for (0..colorTiles.len) |tileIndex| {
-        const tileX = tileIndex % cfg.tilePerRow;
-        const tileY = tileIndex / cfg.tilePerRow;
-
-        writeTile(.{ .buffer = backing, .tileX = tileX, .tileY = tileY }, tileIndex);
+        writeTile(backing, tileIndex, tileIndex);
     }
 
     const size = cfg.pixelPerRow;

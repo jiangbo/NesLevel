@@ -39,20 +39,21 @@ pub fn write2x2(allocator: std.mem.Allocator, ppu: mem.PPU) !void {
     var it = seen.keyIterator();
     var blockIndex: usize = 0;
     while (it.next()) |block| : (blockIndex += 1) {
-        const baseTileX = (blockIndex % blocksPerRow) * 2;
-        const baseTileY = (blockIndex / blocksPerRow) * 2;
+        // const baseTileX = (blockIndex % blocksPerRow) * 2;
+        // const baseTileY = (blockIndex / blocksPerRow) * 2;
 
         for (block, 0..) |tileIndex, index| {
             var tileX: usize, var tileY: usize = .{ 0, 0 };
             if ((index & 0b01) != 0) tileX += 1;
             if ((index & 0b10) != 0) tileY += 1;
 
-            const writeTileDesc = ctx.WriteTileDesc{
-                .buffer = backing,
-                .tileX = baseTileX + tileX,
-                .tileY = baseTileY + tileX,
-            };
-            ctx.writeTile(writeTileDesc, tileIndex);
+            // const writeTileDesc = ctx.WriteTileDesc{
+            //     .buffer = backing,
+            //     .tileX = baseTileX + tileX,
+            //     .tileY = baseTileY + tileX,
+            // };
+            // _ = writeTileDesc;
+            ctx.writeTile(backing, tileIndex, tileIndex);
         }
     }
 
