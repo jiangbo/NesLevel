@@ -30,7 +30,7 @@ pub fn main() !void {
 
     try ctx.writeAllTiles();
 
-    try block.write4x1(allocator, rom[0x38114..][0..100]);
+    // try block.write4x1(allocator, rom[0x38114..][0..100]);
 
     // try block.write2x2(allocator, ppu);
     // try block.write4x4(allocator, ppu);
