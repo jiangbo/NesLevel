@@ -22,8 +22,9 @@ pub fn write4x1(allocator: std.mem.Allocator, tiles: []const u8) !void {
         ctx.writeTile(backing, index, tileIndex);
     }
 
-    const buf = img.Buffer.init(width, height, backing);
-    try buf.write("out/23-blocks-4x1.ppm");
+    var buffer = img.Buffer.init(width, height, backing);
+    buffer.drawGrid(16);
+    try buffer.write("out/23-blocks-4x1.ppm");
 }
 
 pub fn writeSetBlock(allocator: std.mem.Allocator, set: ctx.HashSet) !void {
@@ -49,6 +50,84 @@ pub fn writeSetBlock(allocator: std.mem.Allocator, set: ctx.HashSet) !void {
 
     const buffer = img.Buffer.init(width, height, backing);
     try buffer.write("out/24-blocks-set.ppm");
+}
+
+pub fn find(data: []const u8, set: ctx.HashSet) void {
+    const u32Ptr: [*]const u32 = @ptrCast(@alignCast(data.ptr));
+    const blocks = u32Ptr[0 .. data.len / 4];
+
+    const GAP_LIMIT: usize = 4; // ≤4 个 u32 的 gap 不算断开
+
+    var maxCount: usize = 0;
+    var maxIndex: usize = 0;
+
+    var currentCount: usize = 0; // 当前段内匹配到的项数量（仅匹配项）
+    var currentStart: usize = 0; // 当前段第一个匹配项的索引
+    var unmatched: usize = 0; // 自上次匹配以来未命中的连续数量
+    var firstVal: u32 = 0; // 当前段第一个匹配的值
+    var seenDifferent: bool = false; // 当前段内有没有与 firstVal 不同的匹配值
+
+    for (blocks, 0..) |block, i| {
+        if (set.contains(block)) {
+            if (currentCount == 0) {
+                // 新段开始
+                currentStart = i;
+                currentCount = 1;
+                unmatched = 0;
+                firstVal = block;
+                seenDifferent = false;
+            } else {
+                // 已在段内
+                if (unmatched > GAP_LIMIT) {
+                    // gap 太大，前段终止 —— 在终止处做一次更新
+                    if (seenDifferent and currentCount > maxCount) {
+                        maxCount = currentCount;
+                        maxIndex = currentStart;
+                    }
+                    // 从当前位置重新开始新段
+                    currentStart = i;
+                    currentCount = 1;
+                    unmatched = 0;
+                    firstVal = block;
+                    seenDifferent = false;
+                } else {
+                    // gap 在容忍范围内，段继续，但不把 gap 加入 currentCount
+                    currentCount += 1;
+                    if (block != firstVal) seenDifferent = true;
+                    unmatched = 0;
+                }
+            }
+
+            // （可选）在这里也可更新 max，但我们在段结束 /继续时都做了检查，
+            // 为保证不会错过最后一段，我们在 loop 末尾和段断开时都会检查。
+        } else {
+            // 非匹配项
+            if (currentCount > 0) {
+                unmatched += 1;
+                if (unmatched > GAP_LIMIT) {
+                    // 段真正断开，终止并记录（如果不是全相同）
+                    if (seenDifferent and currentCount > maxCount) {
+                        maxCount = currentCount;
+                        maxIndex = currentStart;
+                    }
+                    // 重置，准备寻找下一段
+                    currentCount = 0;
+                    unmatched = 0;
+                    seenDifferent = false;
+                }
+            } // else 不在任何段中，跳过
+        }
+    }
+
+    // 到达末尾时，如果当前段仍然存在，做一次最终检查
+    if (currentCount > 0) {
+        if (seenDifferent and currentCount > maxCount) {
+            maxCount = currentCount;
+            maxIndex = currentStart;
+        }
+    }
+
+    std.log.info("max index: 0x{x}, count: {d}", .{ maxIndex, maxCount });
 }
 
 fn collectBlocks2x2(allocator: std.mem.Allocator, nameTable: []u8) !std.AutoHashMap([4]u8, void) {

@@ -58,6 +58,11 @@ pub const Buffer = struct {
     fn toImageBuffer(self: Buffer) img.Buffer {
         return .init(self.width, self.height, self.data);
     }
+
+    fn draw16x16Grid(self: *Buffer) void {
+        var buffer = self.toImageBuffer();
+        buffer.draw16x16Grid();
+    }
 };
 
 const systemPalette = @embedFile("nes2.pal");
