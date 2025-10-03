@@ -11,7 +11,7 @@ pub var colorTiles: [cfg.tilePerBank]ColorTile = undefined;
 pub var nameTable1NotSame: bool = false;
 pub var nameTable2NotSame: bool = false;
 
-const HashSet = std.AutoArrayHashMapUnmanaged(u32, void);
+pub const HashSet = std.AutoArrayHashMapUnmanaged(u32, void);
 pub var block2x2Set: HashSet = .empty;
 
 pub fn init(alloc: std.mem.Allocator) void {
@@ -31,18 +31,36 @@ pub fn setTileRow(index: usize, row: usize, src: []const u8) void {
     @memcpy(colorTile[start..][0..src.len], src);
 }
 
-pub fn writeTile(buffer: []u8, dst: usize, src: usize) void {
+pub fn writeTile(buffer: []u8, pos: usize, src: usize) void {
     std.debug.assert(buffer.len >= cfg.bytePerTileCell);
 
     // tile 坐标转字节坐标
-    const x = (dst % cfg.tilePerRow) * cfg.bytePerTileRow;
-    const tileY = dst / cfg.tilePerRow;
+    const x = (pos % cfg.tilePerRow) * cfg.bytePerTileRow;
+    const tileY = pos / cfg.tilePerRow;
     const start = x + tileY * cfg.tileSize * cfg.bytePerRow;
 
     for (0..cfg.tileSize) |row| {
         const buf = buffer[start + row * cfg.bytePerRow ..];
         writeTileRow(buf, src, row);
     }
+}
+
+pub fn indexToPostion(index: usize, width: usize, height: usize) usize {
+    const tilesPerBlock = width * height;
+    const blockIndex = index / tilesPerBlock;
+    const tileInBlock = index % tilesPerBlock;
+
+    const blocksPerRow = @divExact(cfg.tilePerRow, width);
+    const blockX = blockIndex % blocksPerRow;
+    const blockY = blockIndex / blocksPerRow;
+
+    const startY = blockY * height * cfg.tilePerRow;
+    const start = startY + blockX * width;
+
+    const inRow = tileInBlock / width;
+    const inCol = tileInBlock % width;
+
+    return start + inRow * cfg.tilePerRow + inCol;
 }
 
 pub fn writeTileRow(dst: []u8, tileIndex: usize, row: usize) void {

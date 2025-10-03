@@ -37,6 +37,33 @@ pub fn write4x1(allocator: std.mem.Allocator, blocks: []const u8) !void {
     try buf.write("out/23-blocks-4x1.ppm");
 }
 
+pub fn writeSetBlock(allocator: std.mem.Allocator, set: ctx.HashSet) !void {
+    const blockPerRow = @divExact(cfg.tilePerRow, 2);
+    const blockRows = try std.math.divCeil(usize, set.count(), blockPerRow);
+    const totalTiles = (blockRows * 2) * cfg.tilePerRow;
+    const len = totalTiles * cfg.bytePerTileCell;
+
+    const backing = try allocator.alloc(u8, len);
+    defer allocator.free(backing);
+    @memset(backing, 0);
+
+    var tileIndex: usize = 0;
+    var iterator = set.iterator();
+    while (iterator.next()) |block| {
+        const bytes = std.mem.asBytes(block.key_ptr);
+        for (bytes) |tile| {
+            const pos = ctx.indexToPostion(tileIndex, 2, 2);
+            ctx.writeTile(backing, pos, tile);
+            tileIndex += 1;
+        }
+    }
+
+    const width = cfg.pixelPerRow;
+    const height = blockRows * 2 * cfg.tileSize;
+    const buffer = img.Buffer.init(width, height, backing);
+    try buffer.write("out/24-blocks-set.ppm");
+}
+
 fn collectBlocks2x2(allocator: std.mem.Allocator, nameTable: []u8) !std.AutoHashMap([4]u8, void) {
     var seen = std.AutoHashMap([4]u8, void).init(allocator);
     const blocksX = 32 / 2;

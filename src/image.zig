@@ -1,12 +1,14 @@
 const std = @import("std");
 
+const cfg = @import("config.zig");
+
 pub const Buffer = struct {
     width: usize,
     height: usize,
     data: []const u8,
 
     pub fn init(width: usize, height: usize, data: []const u8) Buffer {
-        std.debug.assert(data.len == width * height * 3);
+        std.debug.assert(data.len == width * height * cfg.pixelSize);
         return Buffer{ .width = width, .height = height, .data = data };
     }
 
