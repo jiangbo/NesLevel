@@ -5,32 +5,21 @@ const cfg = @import("config.zig");
 const img = @import("image.zig");
 const mem = @import("memory.zig");
 
-pub fn write4x1(allocator: std.mem.Allocator, blocks: []const u8) !void {
-    const blockSize = 2; // 每个 block 输出 2x2 tile
-    const blocksPerRow = 8; // 图片每行放 8 个 block
-    const blockPixelSize = cfg.tileSize * blockSize;
+const divCeil = std.math.divCeil;
 
-    const blockCount = blocks.len / 4;
-    const rows = (blockCount + blocksPerRow - 1) / blocksPerRow;
-    const width = blocksPerRow * blockPixelSize;
-    const height = rows * blockPixelSize;
+pub fn write4x1(allocator: std.mem.Allocator, tiles: []const u8) !void {
+    const blockPerRow = @divExact(cfg.tilePerRow, 2);
+    const blockRows = try divCeil(usize, tiles.len / 4, blockPerRow);
 
-    const backing = try allocator.alloc(u8, width * height * 3);
+    const width = blockPerRow * (cfg.tileSize * 2);
+    const height = blockRows * (cfg.tileSize * 2);
+
+    const backing = try allocator.alloc(u8, width * height * cfg.pixelSize);
     defer allocator.free(backing);
     @memset(backing, 0);
 
-    for (0..blockCount) |i| {
-        const baseTileX = (i % blocksPerRow) * blockSize;
-        const baseTileY = (i / blocksPerRow) * blockSize;
-
-        // 每个 block 内 4 个 tile
-        for (0..4) |j| {
-            const dx = j % 2;
-            const dy = j / 2;
-            const tileIndex = blocks[i * 4 + j];
-            const absoluteTileIndex = (baseTileY + dy) * cfg.tilePerRow + (baseTileX + dx);
-            ctx.writeTile(backing, absoluteTileIndex, tileIndex);
-        }
+    for (tiles, 0..) |tileIndex, index| {
+        ctx.writeTile(backing, index, tileIndex);
     }
 
     const buf = img.Buffer.init(width, height, backing);
@@ -39,27 +28,25 @@ pub fn write4x1(allocator: std.mem.Allocator, blocks: []const u8) !void {
 
 pub fn writeSetBlock(allocator: std.mem.Allocator, set: ctx.HashSet) !void {
     const blockPerRow = @divExact(cfg.tilePerRow, 2);
-    const blockRows = try std.math.divCeil(usize, set.count(), blockPerRow);
-    const totalTiles = (blockRows * 2) * cfg.tilePerRow;
-    const len = totalTiles * cfg.bytePerTileCell;
+    const blockRows = try divCeil(usize, set.count(), blockPerRow);
 
-    const backing = try allocator.alloc(u8, len);
+    const width = blockPerRow * (cfg.tileSize * 2);
+    const height = blockRows * (cfg.tileSize * 2);
+
+    const backing = try allocator.alloc(u8, width * height * cfg.pixelSize);
     defer allocator.free(backing);
     @memset(backing, 0);
 
-    var tileIndex: usize = 0;
+    var index: usize = 0;
     var iterator = set.iterator();
     while (iterator.next()) |block| {
         const bytes = std.mem.asBytes(block.key_ptr);
         for (bytes) |tile| {
-            const pos = ctx.indexToPostion(tileIndex, 2, 2);
-            ctx.writeTile(backing, pos, tile);
-            tileIndex += 1;
+            ctx.writeTile(backing, index, tile);
+            index += 1;
         }
     }
 
-    const width = cfg.pixelPerRow;
-    const height = blockRows * 2 * cfg.tileSize;
     const buffer = img.Buffer.init(width, height, backing);
     try buffer.write("out/24-blocks-set.ppm");
 }

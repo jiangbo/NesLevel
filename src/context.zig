@@ -31,9 +31,10 @@ pub fn setTileRow(index: usize, row: usize, src: []const u8) void {
     @memcpy(colorTile[start..][0..src.len], src);
 }
 
-pub fn writeTile(buffer: []u8, pos: usize, src: usize) void {
+pub fn writeTile(buffer: []u8, dst: usize, src: usize) void {
     std.debug.assert(buffer.len >= cfg.bytePerTileCell);
 
+    const pos = indexToPostion(dst, 2, 2);
     // tile 坐标转字节坐标
     const x = (pos % cfg.tilePerRow) * cfg.bytePerTileRow;
     const tileY = pos / cfg.tilePerRow;
@@ -45,7 +46,7 @@ pub fn writeTile(buffer: []u8, pos: usize, src: usize) void {
     }
 }
 
-pub fn indexToPostion(index: usize, width: usize, height: usize) usize {
+fn indexToPostion(index: usize, width: usize, height: usize) usize {
     const tilesPerBlock = width * height;
     const blockIndex = index / tilesPerBlock;
     const tileInBlock = index % tilesPerBlock;
@@ -111,8 +112,10 @@ pub fn extract2x2Blocks(tiles: []const u8) !void {
     try block2x2Set.ensureTotalCapacity(allocator, tiles.len / 4);
 
     var index: usize = 0;
-    while (index + cfg.tilePerRow < tiles.len) : (index += 2) {
-        const next = index + cfg.tilePerRow;
+    while (index + cfg.nameTableCols < tiles.len) : (index += 2) {
+        if ((index / cfg.nameTableCols) % 2 != 0) continue;
+
+        const next = index + cfg.nameTableCols;
         const array = [_]u8{
             tiles[index], tiles[index + 1],
             tiles[next],  tiles[next + 1],

@@ -10,3 +10,6 @@ pub const bytePerBank = bytePerTileCell * tilePerBank;
 pub const tilePerRow = 16; // 每行 16 个 tile
 pub const bytePerRow = bytePerTileRow * tilePerRow;
 pub const pixelPerRow = tilePerRow * tileSize;
+
+pub const nameTableCols = 32;
+pub const nameTableRows = 30;
