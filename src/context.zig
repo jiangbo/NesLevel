@@ -11,9 +11,16 @@ pub var colorTiles: [cfg.tilePerBank]ColorTile = undefined;
 pub var nameTable1NotSame: bool = false;
 pub var nameTable2NotSame: bool = false;
 
+const HashSet = std.AutoArrayHashMapUnmanaged(u32, void);
+pub var block2x2Set: HashSet = .empty;
+
 pub fn init(alloc: std.mem.Allocator) void {
     allocator = alloc;
     @memset(std.mem.asBytes(colorTiles[0..]), 0);
+}
+
+pub fn deinit() void {
+    block2x2Set.deinit(allocator);
 }
 
 pub fn setTileRow(index: usize, row: usize, src: []const u8) void {
@@ -65,4 +72,38 @@ pub fn writeAllTiles() !void {
     const size = cfg.pixelPerRow;
     const buffer = img.Buffer.init(size, size, backing);
     try buffer.write("out/18-tiles.ppm");
+}
+
+// pub fn extract2x2Blocks(tiles: []const u8) !void {
+//     std.debug.assert(tiles.len % 4 == 0);
+
+//     const u32Ptr: [*]const u32 = @ptrCast(@alignCast(tiles.ptr));
+//     const blocks = u32Ptr[0 .. tiles.len / 4];
+
+//     try block2x2Set.ensureTotalCapacity(allocator, blocks.len);
+//     for (blocks) |value| block2x2Set.putAssumeCapacity(value, {});
+//     block2x2Set.shrinkAndFree(allocator, block2x2Set.count());
+
+//     std.log.info("2x2 block count: {d}", .{block2x2Set.count()});
+// }
+
+pub fn extract2x2Blocks(tiles: []const u8) !void {
+    std.debug.assert(tiles.len % 4 == 0);
+
+    try block2x2Set.ensureTotalCapacity(allocator, tiles.len / 4);
+
+    var index: usize = 0;
+    while (index + cfg.tilePerRow < tiles.len) : (index += 2) {
+        const next = index + cfg.tilePerRow;
+        const array = [_]u8{
+            tiles[index], tiles[index + 1],
+            tiles[next],  tiles[next + 1],
+        };
+        const value = std.mem.bytesToValue(u32, &array);
+        block2x2Set.putAssumeCapacity(value, {});
+    }
+
+    block2x2Set.shrinkAndFree(allocator, block2x2Set.count());
+
+    std.log.info("2x2 block count: {d}", .{block2x2Set.count()});
 }

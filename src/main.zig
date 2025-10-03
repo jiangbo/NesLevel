@@ -18,6 +18,7 @@ pub fn main() !void {
     defer allocator.free(rom);
 
     ctx.init(allocator);
+    defer ctx.deinit();
 
     const ppu = mem.PPU.init(ppuDump);
     printHex(ppu.palette);
@@ -28,7 +29,9 @@ pub fn main() !void {
     try ppm.writePatternTable(ppu);
     try ppm.writeNameTable(ppu);
 
-    try ctx.writeAllTiles();
+    // try ctx.writeAllTiles();
+
+    try ctx.extract2x2Blocks(ppu.nameTable2[0..mem.PPU.attrIndex]);
 
     // try block.write4x1(allocator, rom[0x38114..][0..100]);
 
