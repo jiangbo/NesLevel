@@ -31,6 +31,7 @@ pub fn main() !void {
 
     // try ctx.writeAllTiles();
 
+    try ctx.extract2x2Blocks(ppu.nameTable0[0..mem.PPU.attrIndex]);
     try ctx.extract2x2Blocks(ppu.nameTable2[0..mem.PPU.attrIndex]);
 
     try block.write4x1(allocator, rom[0x38114..][0..100]);
