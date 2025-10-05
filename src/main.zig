@@ -25,6 +25,7 @@ pub fn main() !void {
     printHex(ppu.nameTable0[mem.PPU.attrIndex..]);
     printHex(ppu.nameTable2[mem.PPU.attrIndex..]);
 
+    ctx.palette = ppu.palette;
     try pgm.writePatternTable(ppu);
     try pgm.writeNameTable(ppu);
 
@@ -36,17 +37,15 @@ pub fn main() !void {
     try ctx.extract2x2Blocks(ppu.nameTable0);
     try ctx.extract2x2Blocks(ppu.nameTable2);
 
-    // const key: u32 = 0xD7D6D7D6;
-    // const key: u32 = 0xD6D7D6D7;
-    // const key: u32 = 0xE6E7D8D9;
-    const key: u32 = 0xD9D8E7E6;
-    const v = ctx.block2x2Set.get(key);
-    std.log.info("first color: {?b}", .{v});
-    try block.write4x1(allocator, rom[0x38110..][0..256]);
+    try block.write4x1(allocator, rom[0x38110..][0..112]);
 
     try block.writeSetBlock(allocator, ctx.block2x2Set);
 
     block.findBlock(rom, ctx.block2x2Set);
+
+    ctx.blockAttributes = rom[0x38510..][0..112];
+    ctx.patternTable = ppu.patternTable0;
+    try block.writeAttributeBlock(allocator, rom[0x38110..][0 .. 112 * 4]);
 
     // try block.write2x2(allocator, ppu);
     // try block.write4x4(allocator, ppu);

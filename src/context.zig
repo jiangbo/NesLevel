@@ -4,6 +4,8 @@ const cfg = @import("config.zig");
 const img = @import("image.zig");
 const mem = @import("memory.zig");
 
+pub const systemPalette = @embedFile("nes2.pal");
+pub var palette: []const u8 = &.{};
 const ColorTile = [cfg.bytePerTileCell]u8;
 
 var allocator: std.mem.Allocator = undefined;
@@ -14,6 +16,9 @@ pub var nameTable2NotSame: bool = false;
 
 pub const HashMap = std.AutoArrayHashMapUnmanaged(u32, u8);
 pub var block2x2Set: HashMap = .empty;
+
+pub var blockAttributes: []const u8 = &.{};
+pub var patternTable: []const u8 = &.{};
 
 pub fn init(alloc: std.mem.Allocator) void {
     allocator = alloc;
@@ -44,6 +49,42 @@ pub fn writeTile(buffer: []u8, dst: usize, src: usize) void {
     for (0..cfg.tileSize) |row| {
         const buf = buffer[start + row * cfg.bytePerRow ..];
         writeTileRow(buf, src, row);
+    }
+}
+
+pub fn writeAttributeTile(buffer: []u8, dst: usize, tileIndex: usize) void {
+    std.debug.assert(buffer.len >= cfg.bytePerTileCell);
+
+    // 找到 attribute
+    const paletteGroup = blockAttributes[dst / 4];
+
+    const tileOffset = tileIndex * 16;
+    const plane0 = patternTable[tileOffset..][0..8];
+    const plane1 = patternTable[tileOffset + 8 ..][0..8];
+
+    // 将 dst 转换为 tile 坐标
+    const pos = indexToPostion(dst, 2, 2);
+    const x = (pos % cfg.tilePerRow) * cfg.bytePerTileRow;
+    const tileY = pos / cfg.tilePerRow;
+    const start = x + tileY * cfg.tileSize * cfg.bytePerRow;
+
+    for (0..cfg.tileSize) |row| {
+        const rowBuffer = buffer[start + row * cfg.bytePerRow ..];
+
+        for (0..cfg.tileSize) |col| {
+            const bit: u3 = @intCast(7 ^ col);
+            const lo = (plane0[row] >> bit) & 1;
+            const hi = (plane1[row] >> bit) & 1;
+            const index: u8 = @intCast((hi << 1) | lo);
+
+            var paletteIndex: usize = paletteGroup * 4 + index;
+            if (index == 0) paletteIndex = 0;
+
+            const colorIndex = palette[paletteIndex];
+            const rgb = systemPalette[colorIndex * 3 ..][0..3];
+
+            @memcpy(rowBuffer[col * 3 ..][0..3], rgb);
+        }
     }
 }
 

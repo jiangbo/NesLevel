@@ -73,11 +73,11 @@ pub fn findBlock(data: []const u8, set: ctx.HashMap) void {
 
             gap = 0;
             currentCount += 1;
-            std.log.info("index: {X}, block: {X}, color: {?b}", .{
-                i * 4,
-                block,
-                set.get(block),
-            });
+            // std.log.info("index: {X}, block: {X}, color: {?b}", .{
+            //     i * 4,
+            //     block,
+            //     set.get(block),
+            // });
 
             if (currentCount > maxCount) {
                 maxCount = currentCount;
@@ -90,6 +90,26 @@ pub fn findBlock(data: []const u8, set: ctx.HashMap) void {
     const addr = maxIndex * 4;
     std.log.info("max index: 0x{x}, count: {d}", .{ addr, maxCount });
     std.log.info("PRG index: 0x{x}", .{addr - 0x10});
+}
+
+pub fn writeAttributeBlock(allocator: std.mem.Allocator, tiles: []const u8) !void {
+    const blockPerRow = @divExact(cfg.tilePerRow, 2);
+    const blockRows = try divCeil(usize, tiles.len / 4, blockPerRow);
+
+    const width = blockPerRow * (cfg.tileSize * 2);
+    const height = blockRows * (cfg.tileSize * 2);
+
+    const backing = try allocator.alloc(u8, width * height * cfg.pixelSize);
+    defer allocator.free(backing);
+    @memset(backing, 0);
+
+    for (tiles, 0..) |tileIndex, index| {
+        ctx.writeAttributeTile(backing, index, tileIndex);
+    }
+
+    var buffer = img.Buffer.init(width, height, backing);
+    buffer.draw16x16Grid();
+    try buffer.write("out/25-attr-blocks.ppm");
 }
 
 pub fn findAttribute(data: []const u8, set: ctx.HashSet) void {

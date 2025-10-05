@@ -42,7 +42,7 @@ pub const Buffer = struct {
                 if (index == 0) paletteIndex = 0;
 
                 const colorIndex = self.palette[paletteIndex];
-                const rgb = systemPalette[colorIndex * 3 ..][0..3];
+                const rgb = ctx.systemPalette[colorIndex * 3 ..][0..3];
                 const idx = rowOffset + (baseX + col) * 3;
                 @memcpy(self.data[idx..][0..3], rgb);
             }
@@ -64,8 +64,6 @@ pub const Buffer = struct {
         buffer.draw16x16Grid();
     }
 };
-
-const systemPalette = @embedFile("nes2.pal");
 
 pub fn writePatternTable(ppu: mem.PPU) !void {
     const width = 128;
