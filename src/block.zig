@@ -27,7 +27,7 @@ pub fn write4x1(allocator: std.mem.Allocator, tiles: []const u8) !void {
     try buffer.write("out/23-blocks-4x1.ppm");
 }
 
-pub fn writeSetBlock(allocator: std.mem.Allocator, set: ctx.HashSet) !void {
+pub fn writeSetBlock(allocator: std.mem.Allocator, set: ctx.HashMap) !void {
     const blockPerRow = @divExact(cfg.tilePerRow, 2);
     const blockRows = try divCeil(usize, set.count(), blockPerRow);
 
@@ -53,7 +53,7 @@ pub fn writeSetBlock(allocator: std.mem.Allocator, set: ctx.HashSet) !void {
     try buffer.write("out/24-blocks-set.ppm");
 }
 
-pub fn find(data: []const u8, set: ctx.HashSet) void {
+pub fn findBlock(data: []const u8, set: ctx.HashMap) void {
     const u32Ptr: [*]const u32 = @ptrCast(@alignCast(data.ptr));
     const blocks = u32Ptr[0 .. data.len / 4];
 
@@ -73,6 +73,11 @@ pub fn find(data: []const u8, set: ctx.HashSet) void {
 
             gap = 0;
             currentCount += 1;
+            std.log.info("index: {X}, block: {X}, color: {?b}", .{
+                i * 4,
+                block,
+                set.get(block),
+            });
 
             if (currentCount > maxCount) {
                 maxCount = currentCount;
@@ -82,7 +87,39 @@ pub fn find(data: []const u8, set: ctx.HashSet) void {
         else gap += 1;
     }
 
-    std.log.info("max index: 0x{x}, count: {d}", .{ maxIndex * 4, maxCount });
+    const addr = maxIndex * 4;
+    std.log.info("max index: 0x{x}, count: {d}", .{ addr, maxCount });
+    std.log.info("PRG index: 0x{x}", .{addr - 0x10});
+}
+
+pub fn findAttribute(data: []const u8, set: ctx.HashSet) void {
+    var maxCount: usize = 0;
+    var currentCount: usize = 0;
+    var maxIndex: usize = 0;
+    var currentIndex: usize = 0;
+
+    var previous: u32 = 0;
+    var gap: usize = 0;
+    for (data, 0..) |block, i| {
+        if (block == previous) continue; // 不处理连续相同的
+        previous = block;
+
+        if (set.contains(block)) {
+            if (currentCount == 0) currentIndex = i;
+
+            gap = 0;
+            currentCount += 1;
+
+            if (currentCount > maxCount) {
+                maxCount = currentCount;
+                maxIndex = currentIndex;
+            }
+        } else if (gap > 8) currentCount = 0 //
+        else gap += 1;
+    }
+
+    std.log.info("max index: 0x{x}, count: {d}", .{ maxIndex, maxCount });
+    std.log.info("PRG index: 0x{x}", .{maxIndex - 0x10});
 }
 
 fn collectBlocks2x2(allocator: std.mem.Allocator, nameTable: []u8) !std.AutoHashMap([4]u8, void) {

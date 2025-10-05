@@ -100,7 +100,7 @@ fn fillPatternBuffer(buffer: *Buffer, ppu: mem.PPU, i: u8) void {
             .plane0 = table[offset..][0..8],
             .plane1 = table[offset + 8 ..][0..8],
         };
-        buffer.drawTile(tile, i == 0);
+        buffer.drawTile(tile, false);
     }
 }
 

@@ -2,6 +2,7 @@ const std = @import("std");
 
 const cfg = @import("config.zig");
 const img = @import("image.zig");
+const mem = @import("memory.zig");
 
 const ColorTile = [cfg.bytePerTileCell]u8;
 
@@ -11,8 +12,8 @@ pub var colorTiles: [cfg.tilePerBank]ColorTile = undefined;
 pub var nameTable1NotSame: bool = false;
 pub var nameTable2NotSame: bool = false;
 
-pub const HashSet = std.AutoArrayHashMapUnmanaged(u32, void);
-pub var block2x2Set: HashSet = .empty;
+pub const HashMap = std.AutoArrayHashMapUnmanaged(u32, u8);
+pub var block2x2Set: HashMap = .empty;
 
 pub fn init(alloc: std.mem.Allocator) void {
     allocator = alloc;
@@ -106,25 +107,51 @@ pub fn writeAllTiles() !void {
 //     std.log.info("2x2 block count: {d}", .{block2x2Set.count()});
 // }
 
-pub fn extract2x2Blocks(tiles: []const u8) !void {
+pub fn extract2x2Blocks(nametable: []const u8) !void {
+    const tiles = nametable[0..mem.PPU.attrIndex];
+    const attributes = nametable[mem.PPU.attrIndex..];
     std.debug.assert(tiles.len % 4 == 0);
 
     try block2x2Set.ensureTotalCapacity(allocator, tiles.len / 4);
 
     var index: usize = 0;
-    while (index + cfg.nameTableCols < tiles.len) : (index += 2) {
-        if ((index / cfg.nameTableCols) % 2 != 0) continue;
+    var attributeIndex: usize = 0;
+    while (index + cfg.nameTableCols < tiles.len) : (index += 4) {
+        if ((index / cfg.nameTableCols) % 4 != 0) continue;
 
-        const next = index + cfg.nameTableCols;
-        const array = [_]u8{
-            tiles[index], tiles[index + 1],
-            tiles[next],  tiles[next + 1],
-        };
-        const value = std.mem.bytesToValue(u32, &array);
-        block2x2Set.putAssumeCapacity(value, {});
+        // std.log.info("index: {}, attribute index: {}", .{ index, attributeIndex });
+        for (0..4) |i| {
+            const offset: usize = switch (i) {
+                0 => 0,
+                1 => 2,
+                2 => cfg.nameTableCols * 2,
+                3 => cfg.nameTableCols * 2 + 2,
+                else => unreachable,
+            };
+            const next = index + cfg.nameTableCols + offset;
+            if (next > tiles.len) break;
+            const array = [_]u8{
+                tiles[index + offset], tiles[index + offset + 1],
+                tiles[next],           tiles[next + 1],
+            };
+            const value = std.mem.bytesToValue(u32, &array);
+            const attr = attributes[attributeIndex];
+
+            const color_mask: u8 = switch (i) {
+                0 => 0b00000011, // 左上
+                1 => 0b00001100, // 右上
+                2 => 0b00110000, // 左下
+                3 => 0b11000000, // 右下
+                else => unreachable,
+            };
+            const color = attr & color_mask;
+            // const shift: u3 = @intCast(i * 2);
+            // const color: u8 = (attr >> shift) & 0b11;
+            block2x2Set.putAssumeCapacity(value, color);
+        }
+        attributeIndex += 1;
     }
 
     block2x2Set.shrinkAndFree(allocator, block2x2Set.count());
-
     std.log.info("2x2 block count: {d}", .{block2x2Set.count()});
 }
