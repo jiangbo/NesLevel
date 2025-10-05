@@ -20,6 +20,8 @@ pub var block2x2Set: HashMap = .empty;
 pub var blockAttributes: []const u8 = &.{};
 pub var patternTable: []const u8 = &.{};
 
+pub var blockDef: []const u8 = &.{};
+
 pub fn init(alloc: std.mem.Allocator) void {
     allocator = alloc;
     @memset(std.mem.asBytes(colorTiles[0..]), 0);
@@ -66,10 +68,10 @@ pub fn writeAttributeTile(buffer: []u8, dst: usize, tileIndex: usize) void {
     const pos = indexToPostion(dst, 2, 2);
     const x = (pos % cfg.tilePerRow) * cfg.bytePerTileRow;
     const tileY = pos / cfg.tilePerRow;
-    const start = x + tileY * cfg.tileSize * cfg.bytePerRow;
+    const offset = x + tileY * cfg.tileSize * cfg.bytePerRow;
 
     for (0..cfg.tileSize) |row| {
-        const rowBuffer = buffer[start + row * cfg.bytePerRow ..];
+        const rowBuffer = buffer[offset + row * cfg.bytePerRow ..];
 
         for (0..cfg.tileSize) |col| {
             const bit: u3 = @intCast(7 ^ col);
@@ -85,6 +87,29 @@ pub fn writeAttributeTile(buffer: []u8, dst: usize, tileIndex: usize) void {
 
             @memcpy(rowBuffer[col * 3 ..][0..3], rgb);
         }
+
+        const src = rowBuffer[0..cfg.bytePerTileRow];
+        setTileRow(tileIndex, row, src);
+    }
+}
+
+pub const WriteDesc = struct {
+    tileIndex: usize,
+    tileX: usize,
+    tileY: usize,
+    tilePerRow: usize,
+};
+
+pub fn writeTileDesc(buffer: []u8, desc: WriteDesc) void {
+    std.debug.assert(buffer.len >= cfg.bytePerTileCell);
+
+    const bytePerRow = desc.tilePerRow * cfg.bytePerTileRow;
+    const offsetY = bytePerRow * desc.tileY * cfg.tileSize;
+    const start = desc.tileX * cfg.bytePerTileRow + offsetY;
+
+    for (0..cfg.tileSize) |row| {
+        const buf = buffer[start + row * bytePerRow ..];
+        writeTileRow(buf, desc.tileIndex, row);
     }
 }
 
@@ -109,9 +134,7 @@ fn indexToPostion(index: usize, width: usize, height: usize) usize {
 pub fn writeTileRow(dst: []u8, tileIndex: usize, row: usize) void {
     std.debug.assert(dst.len >= cfg.bytePerTileRow);
 
-    var colorTile = &colorTiles[tileIndex];
-    const start = row * cfg.bytePerTileRow;
-    const src = colorTile[start..][0..cfg.bytePerTileRow];
+    const src = readTileRow(tileIndex, row);
     @memcpy(dst[0..cfg.bytePerTileRow], src);
 }
 

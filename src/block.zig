@@ -112,6 +112,46 @@ pub fn writeAttributeBlock(allocator: std.mem.Allocator, tiles: []const u8) !voi
     try buffer.write("out/25-attr-blocks.ppm");
 }
 
+const LevelDesc = struct {
+    blockIndexes: []const u8,
+    widthBlock: usize,
+    heightBlock: usize,
+    tilePerRow: usize,
+};
+
+pub fn writeLevel(allocator: std.mem.Allocator, desc: LevelDesc) !void {
+    const len = desc.widthBlock * desc.heightBlock;
+    std.debug.assert(desc.blockIndexes.len == len);
+
+    const width = desc.widthBlock * 2 * cfg.tileSize;
+    const height = desc.heightBlock * 2 * cfg.tileSize;
+
+    const backing = try allocator.alloc(u8, width * height * cfg.pixelSize);
+    defer allocator.free(backing);
+    @memset(backing, 0);
+
+    for (desc.blockIndexes, 0..) |blockIndex, index| {
+        const i: usize = blockIndex;
+        const tiles = ctx.blockDef[i * 4 ..][0..4];
+
+        const tileX = (index % desc.widthBlock) * 2;
+        const tileY = (index / desc.widthBlock) * 2;
+
+        for (tiles, 0..) |tileIndex, t| {
+            ctx.writeTileDesc(backing, .{
+                .tileIndex = tileIndex,
+                .tileX = tileX + t % 2,
+                .tileY = tileY + t / 2,
+                .tilePerRow = desc.tilePerRow,
+            });
+        }
+    }
+
+    var buffer = img.Buffer.init(width, height, backing);
+    // buffer.draw16x16Grid();
+    try buffer.write("out/26-level.ppm");
+}
+
 pub fn findAttribute(data: []const u8, set: ctx.HashSet) void {
     var maxCount: usize = 0;
     var currentCount: usize = 0;
